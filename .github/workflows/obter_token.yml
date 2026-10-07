@@ -2,9 +2,13 @@ name: Gerar Blogger Token
 
 on:
   workflow_dispatch:
+    inputs:
+      auth_code:
+        description: 'Cole aqui o código de autorização do Google'
+        required: true
 
 jobs:
-  auth:
+  trocar_token:
     runs-on: ubuntu-latest
     steps:
       - name: Configurar Python
@@ -15,9 +19,10 @@ jobs:
       - name: Instalar dependencias
         run: pip install google-auth-oauthlib google-api-python-client
 
-      - name: Gerar URL de Login
+      - name: Obter token.json
         env:
           CREDENTIALS_JSON: ${{ secrets.CREDENTIALS_JSON }}
+          AUTH_CODE: ${{ github.event.inputs.auth_code }}
         run: |
           python -c '
           import json, os
@@ -29,9 +34,11 @@ jobs:
               scopes=["https://www.googleapis.com/auth/blogger"],
               redirect_uri="urn:ietf:wg:oauth:2.0:oob"
           )
-          auth_url, _ = flow.authorization_url(prompt="consent")
+          flow.fetch_token(code=os.environ["AUTH_CODE"].strip())
+          creds = flow.credentials
+
           print("\n" + "="*60)
-          print("CLIQUE NESTE LINK PARA AUTORIZAR:")
-          print(auth_url)
+          print("COPIE TODO O CONTEUDO ABAIXO PARA O SECRET BLOGGER_TOKEN_JSON:")
+          print(creds.to_json())
           print("="*60 + "\n")
           '
