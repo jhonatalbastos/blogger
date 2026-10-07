@@ -25,6 +25,7 @@ jobs:
         run: pip install requests
 
       - name: Executar Etapa
+        shell: python
         env:
           CREDENTIALS_JSON: ${{ secrets.CREDENTIALS_JSON }}
           ETAPA: ${{ github.event.inputs.etapa }}
@@ -93,4 +94,3 @@ jobs:
               print("COPIE TODO O CONTEUDO ABAIXO PARA O SECRET BLOGGER_TOKEN_JSON:")
               print(json.dumps(token_final, indent=2))
               print("="*70 + "\n")
-          shell: python {0}
