@@ -1,0 +1,37 @@
+name: Gerar Blogger Token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install google-auth-oauthlib google-api-python-client
+
+      - name: Gerar URL de Login
+        env:
+          CREDENTIALS_JSON: ${{ secrets.CREDENTIALS_JSON }}
+        run: |
+          python -c '
+          import json, os
+          from google_auth_oauthlib.flow import InstalledAppFlow
+
+          creds_data = json.loads(os.environ["CREDENTIALS_JSON"])
+          flow = InstalledAppFlow.from_client_config(
+              creds_data,
+              scopes=["https://www.googleapis.com/auth/blogger"],
+              redirect_uri="urn:ietf:wg:oauth:2.0:oob"
+          )
+          auth_url, _ = flow.authorization_url(prompt="consent")
+          print("\n" + "="*60)
+          print("CLIQUE NESTE LINK PARA AUTORIZAR:")
+          print(auth_url)
+          print("="*60 + "\n")
+          '
