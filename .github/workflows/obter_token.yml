@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       auth_code:
-        description: 'Cole aqui o código de autorização do Google'
+        description: 'Cole aqui o codigo de autorizacao do Google'
         required: true
 
 jobs:
@@ -16,29 +16,53 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependencias
-        run: pip install google-auth-oauthlib google-api-python-client
+      - name: Instalar requests
+        run: pip install requests
 
-      - name: Obter token.json
+      - name: Trocar Codigo por Token
         env:
           CREDENTIALS_JSON: ${{ secrets.CREDENTIALS_JSON }}
           AUTH_CODE: ${{ github.event.inputs.auth_code }}
         run: |
           python -c '
-          import json, os
-          from google_auth_oauthlib.flow import InstalledAppFlow
+          import json, os, urllib.parse, requests
 
           creds_data = json.loads(os.environ["CREDENTIALS_JSON"])
-          flow = InstalledAppFlow.from_client_config(
-              creds_data,
-              scopes=["https://www.googleapis.com/auth/blogger"],
-              redirect_uri="urn:ietf:wg:oauth:2.0:oob"
-          )
-          flow.fetch_token(code=os.environ["AUTH_CODE"].strip())
-          creds = flow.credentials
+          cfg = creds_data.get("installed") or creds_data.get("web")
+
+          code = os.environ["AUTH_CODE"].strip()
+          # Se o codigo tiver vindo com codificacao de URL, decodifica
+          code = urllib.parse.unquote(code)
+
+          token_uri = cfg.get("token_uri", "https://oauth2.googleapis.com/token")
+
+          payload = {
+              "code": code,
+              "client_id": cfg["client_id"],
+              "client_secret": cfg["client_secret"],
+              "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
+              "grant_type": "authorization_code"
+          }
+
+          res = requests.post(token_uri, data=payload)
+          data = res.json()
+
+          if "error" in data:
+              print("\nERRO DO GOOGLE:")
+              print(json.dumps(data, indent=2))
+              exit(1)
+
+          token_final = {
+              "token": data.get("access_token"),
+              "refresh_token": data.get("refresh_token"),
+              "token_uri": token_uri,
+              "client_id": cfg["client_id"],
+              "client_secret": cfg["client_secret"],
+              "scopes": ["https://www.googleapis.com/auth/blogger"]
+          }
 
           print("\n" + "="*60)
           print("COPIE TODO O CONTEUDO ABAIXO PARA O SECRET BLOGGER_TOKEN_JSON:")
-          print(creds.to_json())
+          print(json.dumps(token_final, indent=2))
           print("="*60 + "\n")
           '
